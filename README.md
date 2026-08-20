@@ -31,8 +31,20 @@ Boot type (Restart / Cold power-up / Fast startup / Resume) comes from Kernel-Bo
 ## Data sources
 
 - `Microsoft-Windows-Diagnostics-Performance/Operational` events 100 (boot timing) and 101–110 (degradation culprits). Requires the DPS, WdiServiceHost and WdiSystemHost services to be enabled — debloat tweaks that disable them stop phase data from being logged.
+- Event 100 itself is WDI's analysis of the **ReadyBoot ETW trace**, which the ReadyBoot autologger captures and **SysMain** finalises. If either is off, the log stays empty permanently — see [No boot performance data](#no-boot-performance-data).
 - Registry `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power\FwPOSTTime` (Last BIOS time).
 - `System` log: Kernel-Boot event 27 (boot type), User32 event 1074 (shutdown reason).
+
+## No boot performance data
+
+When no event 100 records are found the report shows a notice, and there are two very different causes:
+
+| Cause | What the notice says | Fix |
+|---|---|---|
+| **Boot tracing switched off** — SysMain disabled/stopped, or the ReadyBoot autologger's `Start` value is not 1 | Names the specific culprit(s) and the commands to fix them | `Set-Service SysMain -StartupType Automatic; Start-Service SysMain`, set `HKLM\SYSTEM\CurrentControlSet\Control\WMI\Autologger\ReadyBoot\Start` to `1`, then reboot |
+| **Log simply cleared** — tracing is healthy, the log was wiped | Says tracing looks enabled and data returns after the next boot | Nothing; reboot and re-run |
+
+Debloat/“optimiser” scripts commonly disable SysMain and the ReadyBoot autologger, which silently kills all boot timing data.
 
 ## Notes
 
