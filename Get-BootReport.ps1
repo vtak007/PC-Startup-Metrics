@@ -106,11 +106,48 @@ if (-not (Test-HasCurrentBoot $bootEvents) -and $uptimeMin -lt 15) {
     }
 }
 
+# Event 100 is produced by WDI analysing the ReadyBoot ETW trace. That trace is
+# captured by the ReadyBoot autologger and finalised by SysMain, so if either is
+# disabled the log stays empty forever - a very different problem from "the log
+# was just cleared". Check both so the report says which one it is.
+function Test-BootTracingEnabled {
+    $reasons = @()
+
+    try {
+        $sysMain = Get-Service SysMain -ErrorAction Stop
+        if ($sysMain.StartType -eq 'Disabled') {
+            $reasons += "the SysMain service is disabled"
+        } elseif ($sysMain.Status -ne 'Running') {
+            $reasons += "the SysMain service is not running (status: $($sysMain.Status))"
+        }
+    } catch {
+        $reasons += "the SysMain service could not be queried"
+    }
+
+    try {
+        $rb = Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\WMI\Autologger\ReadyBoot' -ErrorAction Stop
+        if ($rb.Start -ne 1) { $reasons += "the ReadyBoot autologger is disabled (Start=$($rb.Start))" }
+    } catch {
+        $reasons += "the ReadyBoot autologger registry key could not be read"
+    }
+
+    return , $reasons
+}
+
 if ($bootEvents.Count -eq 0) {
-    $perfLogNotice = "No boot performance events (ID 100) could be read from the " +
-        "Microsoft-Windows-Diagnostics-Performance/Operational log. The log may be disabled " +
-        "(enable it in Event Viewer under Applications and Services Logs) or empty. " +
-        "Report is limited to registry and System-log data."
+    $tracingReasons = Test-BootTracingEnabled
+    if ($tracingReasons.Count -gt 0) {
+        $perfLogNotice = "Boot tracing is switched off, so Windows is not generating boot " +
+            "performance events (ID 100) at all: " + ($tracingReasons -join "; ") + ". " +
+            "Re-enable with 'Set-Service SysMain -StartupType Automatic; Start-Service SysMain' and " +
+            "set HKLM\SYSTEM\CurrentControlSet\Control\WMI\Autologger\ReadyBoot\Start to 1, then " +
+            "reboot. Report is limited to registry and System-log data until then."
+    } else {
+        $perfLogNotice = "No boot performance events (ID 100) could be read from the " +
+            "Microsoft-Windows-Diagnostics-Performance/Operational log. Boot tracing looks " +
+            "enabled, so the log has most likely just been cleared - data will reappear after " +
+            "the next boot. Report is limited to registry and System-log data."
+    }
 }
 
 # --- Collect: boot type (ID 27) and shutdown reason (ID 1074) ----------------
