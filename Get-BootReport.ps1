@@ -399,15 +399,17 @@ if ($latest) {
 }
 
 # --- History section ---
-if ($boots.Count -gt 1) {
-    $fastest = ($boots | Sort-Object BootTimeMs | Select-Object -First 1).Start
-    $slowest = ($boots | Sort-Object BootTimeMs -Descending | Select-Object -First 1).Start
+# $boots is sorted most-recent-first, so the first 10 are the last 10 startups.
+$historyBoots = @($boots | Select-Object -First 10)
+if ($historyBoots.Count -gt 1) {
+    $fastest = ($historyBoots | Sort-Object BootTimeMs | Select-Object -First 1).Start
+    $slowest = ($historyBoots | Sort-Object BootTimeMs -Descending | Select-Object -First 1).Start
     [void]$html.AppendLine(@"
-<h2>Boot History (last $($boots.Count) boots)</h2>
+<h2>Boot History (last $($historyBoots.Count) boots)</h2>
 <table>
 <tr><th>Boot time</th><th>Boot type</th><th class="num">Total</th><th class="num">Main path</th><th class="num">Post-boot</th><th class="num">BIOS time</th></tr>
 "@)
-    foreach ($b in $boots) {
+    foreach ($b in $historyBoots) {
         $rowCls = if ($b.Start -eq $fastest) { " class='fastest'" } elseif ($b.Start -eq $slowest) { " class='slowest'" } else { '' }
         $isCurrent = [math]::Abs(($b.Start - $osBootTime).TotalMinutes) -le 2
         $bios = if ($isCurrent -and $fwPostMs) { Format-Sec $fwPostMs } else { '&mdash;' }

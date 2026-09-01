@@ -5,9 +5,11 @@ Generates a self-contained HTML report of Windows boot performance and opens it 
 ## Usage
 
 ```powershell
-.\Get-BootReport.ps1                     # default: last 20 boots
+.\Get-BootReport.ps1                     # default: reads last 20 boots' events
 .\Get-BootReport.ps1 -HistoryCount 50    # more history
 ```
+
+`-HistoryCount` controls how many event-100 records are read from the event log (for the Latest Boot, Phase Breakdown, and degradation-culprit matching). The Boot History table always displays only the most recent 10 of those, regardless of `-HistoryCount`.
 
 Reading the Diagnostics-Performance event log requires Administrator rights; the script self-elevates with a UAC prompt if launched unelevated.
 
@@ -24,7 +26,7 @@ A scheduled task named **Boot Report** runs the script automatically at logon (2
 | Phase Breakdown | Per-phase durations from event 100: kernel, drivers, devices, prefetch, Smss (login page appears at its end), critical services, profiles, Explorer (desktop icons appear at its end), post-boot. |
 | Main Path Detail | Fine-grained event 100 v2 stages: OS loader, PnP init, session 0/1 init, session init — other, logon waits. |
 | Slow Boot Culprits | Apps/drivers/services/phases Windows flagged as slower than their historical baseline (events 101–110), with total and degradation times. |
-| Boot History | One row per boot with type, totals, and BIOS time. Green row = fastest, red = slowest. |
+| Boot History | Last 10 boots (of the `-HistoryCount` read from the log) with type, totals, and BIOS time. Green row = fastest, red = slowest among those shown. |
 
 Boot type (Restart / Cold power-up / Fast startup / Resume) comes from Kernel-Boot event 27 plus the preceding User32 event 1074 shutdown reason.
 
