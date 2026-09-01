@@ -5,9 +5,11 @@ Generates a self-contained HTML report of Windows boot performance and opens it 
 ## Usage
 
 ```powershell
-.\Get-BootReport.ps1                     # default: last 20 boots
+.\Get-BootReport.ps1                     # default: reads last 20 boots' events
 .\Get-BootReport.ps1 -HistoryCount 50    # more history
 ```
+
+`-HistoryCount` controls how many event-100 records are read from the event log (for the Latest Boot, Phase Breakdown, and degradation-culprit matching). The Boot History table always displays only the most recent 10 of those, regardless of `-HistoryCount`.
 
 Reading the Diagnostics-Performance event log requires Administrator rights; the script self-elevates with a UAC prompt if launched unelevated.
 
@@ -24,7 +26,7 @@ A scheduled task named **Boot Report** runs the script automatically at logon (2
 | Phase Breakdown | Per-phase durations from event 100: kernel, drivers, devices, prefetch, Smss (login page appears at its end), critical services, profiles, Explorer (desktop icons appear at its end), post-boot. |
 | Main Path Detail | Fine-grained event 100 v2 stages: OS loader, PnP init, session 0/1 init, session init — other, logon waits. |
 | Slow Boot Culprits | Apps/drivers/services/phases Windows flagged as slower than their historical baseline (events 101–110), with total and degradation times. |
-| Boot History | One row per boot with type, totals, and BIOS time. Green row = fastest, red = slowest. |
+| Boot History | Last 10 boots (of the `-HistoryCount` read from the log) with type, totals, and BIOS time. Green row = fastest, red = slowest among those shown. |
 
 Boot type (Restart / Cold power-up / Fast startup / Resume) comes from Kernel-Boot event 27 plus the preceding User32 event 1074 shutdown reason.
 
@@ -34,6 +36,13 @@ Boot type (Restart / Cold power-up / Fast startup / Resume) comes from Kernel-Bo
 - Event 100 itself is WDI's analysis of the **ReadyBoot ETW trace**, which the ReadyBoot autologger captures and **SysMain** finalises. If either is off, the log stays empty permanently — see [No boot performance data](#no-boot-performance-data).
 - Registry `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power\FwPOSTTime` (Last BIOS time).
 - `System` log: Kernel-Boot event 27 (boot type), User32 event 1074 (shutdown reason).
+
+## Stale current-boot data
+
+If event 100 exists for older boots but not for the current one (even after the script's 5-minute wait), the report distinguishes two cases in the notice banner:
+
+- **No event 100 at all yet** — the current boot's event just hasn't been written; the "Latest Boot" section shows the previous boot instead.
+- **Older event 100 records exist, but none match the current boot** — boot tracing has likely stopped logging at some point since the timestamp given; the notice names it explicitly and points at SysMain / the ReadyBoot autologger, since the sections below are showing stale (not current) data.
 
 ## No boot performance data
 
