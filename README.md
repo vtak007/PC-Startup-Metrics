@@ -35,6 +35,13 @@ Boot type (Restart / Cold power-up / Fast startup / Resume) comes from Kernel-Bo
 - Registry `HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power\FwPOSTTime` (Last BIOS time).
 - `System` log: Kernel-Boot event 27 (boot type), User32 event 1074 (shutdown reason).
 
+## Stale current-boot data
+
+If event 100 exists for older boots but not for the current one (even after the script's 5-minute wait), the report distinguishes two cases in the notice banner:
+
+- **No event 100 at all yet** — the current boot's event just hasn't been written; the "Latest Boot" section shows the previous boot instead.
+- **Older event 100 records exist, but none match the current boot** — boot tracing has likely stopped logging at some point since the timestamp given; the notice names it explicitly and points at SysMain / the ReadyBoot autologger, since the sections below are showing stale (not current) data.
+
 ## No boot performance data
 
 When no event 100 records are found the report shows a notice, and there are two very different causes:

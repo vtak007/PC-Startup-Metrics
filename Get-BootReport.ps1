@@ -100,7 +100,22 @@ if (-not (Test-HasCurrentBoot $bootEvents) -and $uptimeMin -lt 15) {
             break
         }
     }
-    if (-not (Test-HasCurrentBoot $bootEvents)) {
+}
+
+# Whether or not we waited above, the current boot's event may still be
+# missing (e.g. boot tracing stopped logging entirely at some point in the
+# past, leaving only stale older events). Report that distinctly from "log is
+# empty" so a stale report doesn't silently pass as normal.
+if (-not (Test-HasCurrentBoot $bootEvents)) {
+    if ($bootEvents.Count -gt 0) {
+        $staleD = Get-EventDataMap $bootEvents[0]
+        $staleStart = [datetime]::Parse($staleD['BootStartTime'], $null, [System.Globalization.DateTimeStyles]::RoundtripKind).ToLocalTime()
+        $perfLogNotice = "No boot performance event (ID 100) has been logged for the current boot " +
+            "(uptime $([math]::Round($uptimeMin,1)) min). The most recent event on record is from " +
+            "$($staleStart.ToString('yyyy-MM-dd HH:mm:ss')) - boot tracing has likely stopped recording " +
+            "since then (check the SysMain service and the ReadyBoot autologger). The sections below are " +
+            "showing that stale data, not the current boot."
+    } else {
         $perfLogNotice = "The performance event for the current boot had not been written yet " +
             "(waited 5 minutes). The 'Latest Boot' section below shows the previous boot."
     }
